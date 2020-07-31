@@ -883,6 +883,8 @@ class S3FileSystem::Impl {
     } else {
       return Status::Invalid("Invalid S3 connection scheme '", options_.scheme, "'");
     }
+    client_config_.requestTimeoutMs = 10000;
+    client_config_.connectTimeoutMs = 10000;
     client_config_.retryStrategy = std::make_shared<ConnectRetryStrategy>();
     if (!internal::global_options.tls_ca_file_path.empty()) {
       client_config_.caFile = ToAwsString(internal::global_options.tls_ca_file_path);
