@@ -28,6 +28,9 @@
 #include <utility>
 #include <vector>
 
+#include <chrono>
+#include <iostream>
+
 #include "arrow/array.h"
 #include "arrow/buffer.h"
 #include "arrow/csv/chunker.h"
@@ -739,31 +742,65 @@ class SerialTableReader : public BaseTableReader {
     task_group_ = internal::TaskGroup::MakeSerial();
 
     // First block
+    auto start = std::chrono::steady_clock::now();
     ARROW_ASSIGN_OR_RAISE(auto first_buffer, buffer_iterator_.Next());
+    auto end = std::chrono::steady_clock::now();
+    std::cout << "first_buffer, buffer_iterator_.Next() in "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
     if (first_buffer == nullptr) {
       return Status::Invalid("Empty CSV file");
     }
+    start = std::chrono::steady_clock::now();
     RETURN_NOT_OK(ProcessHeader(first_buffer, &first_buffer));
+    end = std::chrono::steady_clock::now();
+    std::cout << "ProcessHeader in "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
+    start = std::chrono::steady_clock::now();
     RETURN_NOT_OK(MakeColumnBuilders());
+    end = std::chrono::steady_clock::now();
+    std::cout << "MakeColumnBuilders in "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
 
+    start = std::chrono::steady_clock::now();
     SerialBlockReader block_reader(MakeChunker(parse_options_),
                                    std::move(buffer_iterator_), std::move(first_buffer));
+    std::cout << "MakeChunker in "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
 
     while (true) {
+      start = std::chrono::steady_clock::now();
       ARROW_ASSIGN_OR_RAISE(auto maybe_block, block_reader.Next());
+      end = std::chrono::steady_clock::now();
+      std::cout << "block_reader.Next in "
+          << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+          << " ns" << std::endl;
       if (!maybe_block.has_value()) {
         // EOF
         break;
       }
+      start = std::chrono::steady_clock::now();
       ARROW_ASSIGN_OR_RAISE(int64_t parsed_bytes,
                             ParseAndInsert(maybe_block->partial, maybe_block->completion,
                                            maybe_block->buffer, maybe_block->block_index,
                                            maybe_block->is_final));
-      RETURN_NOT_OK(maybe_block->consume_bytes(parsed_bytes));
+      end = std::chrono::steady_clock::now();
+      std::cout << "ParseAndInsert in "
+          << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+          << " ns" << std::endl;
+        RETURN_NOT_OK(maybe_block->consume_bytes(parsed_bytes));
     }
     // Finish conversion, create schema and table
     RETURN_NOT_OK(task_group_->Finish());
-    return MakeTable();
+    start = std::chrono::steady_clock::now();
+    auto res = MakeTable();
+    std::cout << "MakeTable in "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
+    return res;
   }
 };
 
@@ -807,8 +844,18 @@ class ThreadedTableReader : public BaseTableReader {
     if (first_buffer == nullptr) {
       return Status::Invalid("Empty CSV file");
     }
+    auto start = std::chrono::steady_clock::now();
     RETURN_NOT_OK(ProcessHeader(first_buffer, &first_buffer));
+    auto end = std::chrono::steady_clock::now();
+    std::cout << "ProcessHeader in "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
+    start = std::chrono::steady_clock::now();
     RETURN_NOT_OK(MakeColumnBuilders());
+    end = std::chrono::steady_clock::now();
+    std::cout << "ProcessHeader in "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
 
     ThreadedBlockReader block_reader(MakeChunker(parse_options_),
                                      std::move(buffer_iterator_),
@@ -820,15 +867,24 @@ class ThreadedTableReader : public BaseTableReader {
         // EOF
         break;
       }
+      start = std::chrono::steady_clock::now();
       DCHECK(!maybe_block->consume_bytes);
+      end = std::chrono::steady_clock::now();
+      std::cout << "block_reader.Next in "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
 
       // Launch parse task
+      start = std::chrono::steady_clock::now();
       task_group_->Append([this, maybe_block] {
         return ParseAndInsert(maybe_block->partial, maybe_block->completion,
                               maybe_block->buffer, maybe_block->block_index,
                               maybe_block->is_final)
             .status();
       });
+      std::cout << "ParseAndInsert in "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
     }
 
     // Finish conversion, create schema and table
