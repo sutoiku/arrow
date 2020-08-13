@@ -746,8 +746,8 @@ class SerialTableReader : public BaseTableReader {
     ARROW_ASSIGN_OR_RAISE(auto first_buffer, buffer_iterator_.Next());
     auto end = std::chrono::steady_clock::now();
     std::cout << "first_buffer, buffer_iterator_.Next() in "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-        << " ns" << std::endl;
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+        << " ms" << std::endl;
     if (first_buffer == nullptr) {
       return Status::Invalid("Empty CSV file");
     }
@@ -755,30 +755,30 @@ class SerialTableReader : public BaseTableReader {
     RETURN_NOT_OK(ProcessHeader(first_buffer, &first_buffer));
     end = std::chrono::steady_clock::now();
     std::cout << "ProcessHeader in "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-        << " ns" << std::endl;
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+        << " ms" << std::endl;
     start = std::chrono::steady_clock::now();
     RETURN_NOT_OK(MakeColumnBuilders());
     end = std::chrono::steady_clock::now();
     std::cout << "MakeColumnBuilders in "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-        << " ns" << std::endl;
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+        << " ms" << std::endl;
 
     start = std::chrono::steady_clock::now();
     SerialBlockReader block_reader(MakeChunker(parse_options_),
                                    std::move(buffer_iterator_), std::move(first_buffer));
     end = std::chrono::steady_clock::now();
     std::cout << "MakeChunker in "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-        << " ns" << std::endl;
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+        << " ms" << std::endl;
 
     while (true) {
       start = std::chrono::steady_clock::now();
       ARROW_ASSIGN_OR_RAISE(auto maybe_block, block_reader.Next());
       end = std::chrono::steady_clock::now();
       std::cout << "block_reader.Next in "
-          << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-          << " ns" << std::endl;
+          << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+          << " ms" << std::endl;
       if (!maybe_block.has_value()) {
         // EOF
         break;
@@ -790,8 +790,8 @@ class SerialTableReader : public BaseTableReader {
                                            maybe_block->is_final));
       end = std::chrono::steady_clock::now();
       std::cout << "ParseAndInsert in "
-          << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-          << " ns" << std::endl;
+          << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+          << " ms" << std::endl;
         RETURN_NOT_OK(maybe_block->consume_bytes(parsed_bytes));
     }
     // Finish conversion, create schema and table
@@ -800,8 +800,8 @@ class SerialTableReader : public BaseTableReader {
     auto res = MakeTable();
     end = std::chrono::steady_clock::now();
     std::cout << "MakeTable in "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-        << " ns" << std::endl;
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+        << " ms" << std::endl;
     return res;
   }
 };
@@ -850,14 +850,14 @@ class ThreadedTableReader : public BaseTableReader {
     RETURN_NOT_OK(ProcessHeader(first_buffer, &first_buffer));
     auto end = std::chrono::steady_clock::now();
     std::cout << "ProcessHeader in "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-        << " ns" << std::endl;
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+        << " ms" << std::endl;
     start = std::chrono::steady_clock::now();
     RETURN_NOT_OK(MakeColumnBuilders());
     end = std::chrono::steady_clock::now();
     std::cout << "ProcessHeader in "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-        << " ns" << std::endl;
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+        << " ms" << std::endl;
 
     ThreadedBlockReader block_reader(MakeChunker(parse_options_),
                                      std::move(buffer_iterator_),
@@ -873,8 +873,8 @@ class ThreadedTableReader : public BaseTableReader {
       DCHECK(!maybe_block->consume_bytes);
       end = std::chrono::steady_clock::now();
       std::cout << "block_reader.Next in "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-        << " ns" << std::endl;
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+        << " ms" << std::endl;
 
       // Launch parse task
       start = std::chrono::steady_clock::now();
@@ -885,8 +885,8 @@ class ThreadedTableReader : public BaseTableReader {
             .status();
       });
       std::cout << "ParseAndInsert in "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-        << " ns" << std::endl;
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+        << " ms" << std::endl;
     }
 
     // Finish conversion, create schema and table
