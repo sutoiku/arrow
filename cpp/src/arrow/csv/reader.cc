@@ -767,6 +767,7 @@ class SerialTableReader : public BaseTableReader {
     start = std::chrono::steady_clock::now();
     SerialBlockReader block_reader(MakeChunker(parse_options_),
                                    std::move(buffer_iterator_), std::move(first_buffer));
+    end = std::chrono::steady_clock::now();
     std::cout << "MakeChunker in "
         << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
         << " ns" << std::endl;
@@ -797,6 +798,7 @@ class SerialTableReader : public BaseTableReader {
     RETURN_NOT_OK(task_group_->Finish());
     start = std::chrono::steady_clock::now();
     auto res = MakeTable();
+    end = std::chrono::steady_clock::now();
     std::cout << "MakeTable in "
         << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
         << " ns" << std::endl;
