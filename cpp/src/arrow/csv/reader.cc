@@ -23,6 +23,7 @@
 #include <limits>
 #include <memory>
 #include <sstream>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -651,9 +652,12 @@ class SerialStreamingReader : public BaseStreamingReader {
     return Status::OK();
   }
 
+
+
  protected:
   Result<std::shared_ptr<RecordBatch>> ReadNext() override {
     if (eof_) {
+      std::cout << "ReadNext: eof_ returning" << std::endl;
       return nullptr;
     }
     if (block_reader_ == nullptr) {
@@ -666,23 +670,27 @@ class SerialStreamingReader : public BaseStreamingReader {
     }
     auto batch = std::move(pending_batch_);
     if (batch != nullptr) {
+      std::cout << "ReadNext: returning pending block" << std::endl;
       return batch;
     }
 
     if (!source_eof_) {
       ARROW_ASSIGN_OR_RAISE(auto maybe_block, block_reader_->Next());
       if (maybe_block.has_value()) {
+        std::cout << "ReadNext: maybe_block.has_value" << std::endl;
         last_block_index_ = maybe_block->block_index;
         auto maybe_parsed = ParseAndInsert(maybe_block->partial, maybe_block->completion,
                                            maybe_block->buffer, maybe_block->block_index,
                                            maybe_block->is_final);
         if (!maybe_parsed.ok()) {
           // Parse error => bail out
+          std::cout << "ReadNext: !maybe_parsed.ok " << maybe_parsed.status().message() << std::endl;
           eof_ = true;
           return maybe_parsed.status();
         }
         RETURN_NOT_OK(maybe_block->consume_bytes(*maybe_parsed));
       } else {
+        std::cout << "ReadNext: source_eof_" << std::endl;
         source_eof_ = true;
         for (auto& decoder : column_decoders_) {
           decoder->SetEOF(last_block_index_ + 1);
@@ -694,6 +702,7 @@ class SerialStreamingReader : public BaseStreamingReader {
     if (schema_ == nullptr && maybe_batch.ok()) {
       schema_ = (*maybe_batch)->schema();
     }
+    std::cout << "ReadNext: return maybe_batch" << std::endl;
     return maybe_batch;
   };
 
